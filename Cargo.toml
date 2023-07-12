@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 serde = "1.0"
 concat-arrays = "0.1"
+thiserror = "1.0"
 
 [dev-dependencies]
 serde_json = "1.0"

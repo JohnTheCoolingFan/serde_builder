@@ -1,7 +1,9 @@
+pub mod error;
 mod field_visitor;
 mod final_builder;
 mod validator;
 
+use error::Error;
 use field_visitor::*;
 pub use final_builder::*;
 pub use validator::*;
@@ -194,12 +196,12 @@ macro_rules! deserialize_impl {
                 FB: FinalBuilder<T, ($($name),+)>,
                 V: Validator<T>,
             {
-                pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, D::Error> {
+                pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, Error<'de, D>> {
                     let StructDeserializer {
                         target_phantom: _,
                         fb_args_phantom: _,
                         final_builder,
-                        validator: _,
+                        validator,
                         field_names,
                     } = self;
                     let field_visitor = FieldVisitor::<T, ($($name,)+), FB, $len>::new(
@@ -212,7 +214,11 @@ macro_rules! deserialize_impl {
                         .map(|s| &*Box::leak(s.into_boxed_str()))
                         .collect::<Vec<_>>()
                         .leak();
-                    des.deserialize_struct("struct", field_names_static, field_visitor)
+                    let value = des.deserialize_struct("struct", field_names_static, field_visitor).map_err(|e| Error::Deserialization(e))?;
+                    if let Some(validator) = validator {
+                        validator.validate(&value).map_err(|e| Error::Validation(e))?;
+                    }
+                    Ok(value)
                 }
             }
         )+
