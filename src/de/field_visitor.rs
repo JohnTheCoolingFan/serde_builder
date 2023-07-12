@@ -120,7 +120,10 @@ macro_rules! field_visitor_impl {
                                 $(
                                 Some($n) => {
                                     if $fname.is_some() {
+                                        #[cfg(not(feature = "leaking"))]
                                         return Err(serde::de::Error::duplicate_field(stringify!($fname)));
+                                        #[cfg(feature = "leaking")]
+                                        return Err(serde::de::Error::duplicate_field(&*Box::leak(key.clone().into_boxed_str())));
                                     }
                                     $fname = Some(map.next_value()?);
                                 },
@@ -133,7 +136,12 @@ macro_rules! field_visitor_impl {
                         }
                     }
 
-                    $(let $fname = $fname.ok_or_else(|| serde::de::Error::missing_field(stringify!($fname)))?;)+
+                    $(
+                        #[cfg(not(feature = "leaking"))]
+                        let $fname = $fname.ok_or_else(|| serde::de::Error::missing_field(stringify!($fname)))?;
+                        #[cfg(feature = "leaking")]
+                        let $fname = $fname.ok_or_else(|| serde::de::Error::missing_field(&*Box::leak(self.field_names.get(($n as usize)).unwrap().clone().into_boxed_str())))?;
+                    )+
 
                     Ok(self.final_builder.assemble(($($fname),+)).unwrap())
                 }
