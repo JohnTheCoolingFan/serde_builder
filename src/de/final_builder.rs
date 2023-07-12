@@ -8,18 +8,12 @@ impl<T, FBARGS> FinalBuilder<T, FBARGS> for () {
     }
 }
 
-impl<T, T0, FN: FnOnce(T0) -> T> FinalBuilder<T, (T0,)> for FN {
-    fn assemble(self, args: (T0,)) -> Option<T> {
-        Some(self(args.0))
-    }
-}
-
 macro_rules! final_builder_impls {
     ($($len:expr => ($($n:tt $name:ident)+))+) => {
         $(
-            impl<T, FN: FnOnce($($name),+) -> T, $($name),+> FinalBuilder<T, ($($name,)+)> for FN {
-                fn assemble(self, args: ($($name),+)) -> Option<T> {
-                    Some(self($(args.$n),+))
+            impl<T, FN: FnOnce($($name),+) -> T, $($name,)+> FinalBuilder<T, ($($name,)+)> for FN {
+                fn assemble(self, args: ($($name,)+)) -> Option<T> {
+                    Some(self($(args.$n,)+))
                 }
             }
         )+
@@ -27,6 +21,7 @@ macro_rules! final_builder_impls {
 }
 
 final_builder_impls! {
+    1 => (0 T0)
     2 => (0 T0 1 T1)
     3 => (0 T0 1 T1 2 T2)
     4 => (0 T0 1 T1 2 T2 3 T3)
