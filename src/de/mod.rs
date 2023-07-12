@@ -202,16 +202,20 @@ macro_rules! deserialize_impl {
                         validator,
                         field_names,
                     } = self;
+                    #[cfg_attr(not(feature = "leaking"), allow(clippy::redundant_clone))]
                     let field_visitor = FieldVisitor::<T, ($($name,)+), FB, $len>::new(
                         final_builder.unwrap(),
                         field_names.clone(),
                     );
                     // I don't like this AT ALL
+                    #[cfg(feature = "leaking")]
                     let field_names_static: &'static [&'static str] = &*field_names
                         .into_iter()
                         .map(|s| &*Box::leak(s.into_boxed_str()))
                         .collect::<Vec<_>>()
                         .leak();
+                    #[cfg(not(feature = "leaking"))]
+                    let field_names_static = &[$(stringify!(field $name)),+];
                     let value = des.deserialize_struct("struct", field_names_static, field_visitor).map_err(|e| Error::Deserialization(e))?;
                     if let Some(validator) = validator {
                         validator.validate(&value).map_err(|e| Error::Validation(e))?;
