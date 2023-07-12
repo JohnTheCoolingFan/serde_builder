@@ -130,7 +130,7 @@ impl<T, FBARGS, FB: FinalBuilder<T, FBARGS>> StructDeserializer<T, FBARGS, FB, (
     }
 }
 
-// Making an impl that woudl go from one element to two conflicted with otehr manual impl and macro
+// Making an impl that would go from one element to two conflicted with otehr manual impl and macro
 // impls. So I think there is no way to have a method for adding just one first field, sadly.
 impl<T, FB: FinalBuilder<T, ()>, V: Validator<T>> StructDeserializer<T, (), FB, V, 0> {
     pub fn first_fields<T0, T1, N0: ToString, N1: ToString>(
