@@ -118,7 +118,7 @@ impl<T, FB: FinalBuilder<T, ()>, V: Validator<T>> StructDeserializer<T, (), FB, 
 macro_rules! add_field_impl {
     ($($len:expr => ($($n:tt $name1:ident),+), $name2:ident)+) => {
         $(
-            impl<T, $($name1,)+ FB: FinalBuilder<T, ($($name1),+)>, V: Validator<T>> StructDeserializer<T, ($($name1),+), FB, V, $len> {
+            impl<T, $($name1,)+ FB: FinalBuilder<T, ($($name1,)+)>, V: Validator<T>> StructDeserializer<T, ($($name1,)+), FB, V, $len> {
                 pub fn field<$name2, N: ToString>(self, name: N) -> StructDeserializer<T, ($($name1,)+ $name2), (), V, {$len+1}> {
                     let StructDeserializer {
                         target_phantom,
@@ -142,6 +142,7 @@ macro_rules! add_field_impl {
 }
 
 add_field_impl! {
+    1 => (0 T0), T1
     2 => (0 T0, 1 T1), T2
     3 => (0 T0, 1 T1, 2 T2), T3
     4 => (0 T0, 1 T1, 2 T2, 3 T3), T4
