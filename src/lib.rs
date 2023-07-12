@@ -5,6 +5,8 @@ use serde::{
     Deserialize, Deserializer,
 };
 
+use concat_arrays::concat_arrays;
+
 pub trait FinalBuilder<T, ARGS> {
     fn assemble(self, args: ARGS) -> Option<T>;
 }
@@ -66,12 +68,13 @@ pub struct StructDeserializer<
     FBARGS = (),
     FB: FinalBuilder<T, FBARGS> = (),
     V: Validator<T> = (),
+    const FN: usize = 0,
 > {
     target_phantom: PhantomData<T>,
     fb_args_phantom: PhantomData<FBARGS>,
     final_builder: Option<FB>,
     validator: Option<V>,
-    field_names: Vec<String>,
+    field_names: [String; FN],
 }
 
 impl<T> Default for StructDeserializer<T> {
@@ -81,7 +84,7 @@ impl<T> Default for StructDeserializer<T> {
             fb_args_phantom: PhantomData::default(),
             final_builder: None,
             validator: None,
-            field_names: vec![],
+            field_names: [],
         }
     }
 }
@@ -129,50 +132,47 @@ impl<T, FBARGS, FB: FinalBuilder<T, FBARGS>> StructDeserializer<T, FBARGS, FB, (
 
 // Making an impl that woudl go from one element to two conflicted with otehr manual impl and macro
 // impls. So I think there is no way to have a method for adding just one first field, sadly.
-impl<T, FB: FinalBuilder<T, ()>, V: Validator<T>> StructDeserializer<T, (), FB, V> {
+impl<T, FB: FinalBuilder<T, ()>, V: Validator<T>> StructDeserializer<T, (), FB, V, 0> {
     pub fn first_fields<T0, T1, N0: ToString, N1: ToString>(
         self,
         name0: N0,
         name1: N1,
-    ) -> StructDeserializer<T, (T0, T1), (), V> {
+    ) -> StructDeserializer<T, (T0, T1), (), V, 2> {
         let StructDeserializer {
             target_phantom,
             fb_args_phantom: _,
             final_builder: _,
             validator,
-            mut field_names,
+            field_names: _,
         } = self;
-        field_names.push(name0.to_string());
-        field_names.push(name1.to_string());
         StructDeserializer {
             target_phantom,
             fb_args_phantom: PhantomData::default(),
             final_builder: None,
             validator,
-            field_names,
+            field_names: [name0.to_string(), name1.to_string()],
         }
     }
 }
 
 macro_rules! add_field_impl {
-    ($($len:expr => ($($name1:ident),+), $name2:ident)+) => {
+    ($($len:expr => ($($n:tt $name1:ident),+), $name2:ident)+) => {
         $(
-            impl<T, $($name1,)+ FB: FinalBuilder<T, ($($name1),+)>, V: Validator<T>> StructDeserializer<T, ($($name1),+), FB, V> {
-                pub fn field<$name2, N: ToString>(self, name: N) -> StructDeserializer<T, ($($name1,)+ $name2), (), V> {
+            impl<T, $($name1,)+ FB: FinalBuilder<T, ($($name1),+)>, V: Validator<T>> StructDeserializer<T, ($($name1),+), FB, V, $len> {
+                pub fn field<$name2, N: ToString>(self, name: N) -> StructDeserializer<T, ($($name1,)+ $name2), (), V, {$len+1}> {
                     let StructDeserializer {
                         target_phantom,
                         fb_args_phantom: _,
                         final_builder: _,
                         validator,
-                        mut field_names,
+                        field_names,
                     } = self;
-                    field_names.push(name.to_string());
                     StructDeserializer {
                         target_phantom,
                         fb_args_phantom: PhantomData::default(),
                         final_builder: None,
                         validator,
-                        field_names,
+                        field_names: concat_arrays!(field_names, [name.to_string()]),
                     }
                 }
             }
@@ -181,39 +181,38 @@ macro_rules! add_field_impl {
 }
 
 add_field_impl! {
-    2 => (T0, T1), T2
-    3 => (T0, T1, T2), T3
-    4 => (T0, T1, T2, T3), T4
-    5 => (T0, T1, T2, T3, T4), T5
-    6 => (T0, T1, T2, T3, T4, T5), T6
-    7 => (T0, T1, T2, T3, T4, T5, T6), T7
-    8 => (T0, T1, T2, T3, T4, T5, T6, T7), T8
-    9 => (T0, T1, T2, T3, T4, T5, T6, T7, T8), T9
-    10 => (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9), T10
-    11 => (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10), T11
-    12 => (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11), T12
-    13 => (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12), T13
-    14 => (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13), T14
-    15 => (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14), T15
+    2 => (0 T0, 1 T1), T2
+    3 => (0 T0, 1 T1, 2 T2), T3
+    4 => (0 T0, 1 T1, 2 T2, 3 T3), T4
+    5 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4), T5
+    6 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5), T6
+    7 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6), T7
+    8 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7), T8
+    9 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8), T9
+    10 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9), T10
+    11 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10), T11
+    12 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10, 11 T11), T12
+    13 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10, 11 T11, 12 T12), T13
+    14 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10, 11 T11, 12 T12, 13 T13), T14
+    15 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10, 11 T11, 12 T12, 13 T13, 14 T14), T15
 }
 
-struct FieldVisitor<T, T0, T1, T2, FB> {
-    field_names: Vec<String>,
+struct FieldVisitor<T, T0, T1, T2, FB, const FN: usize> {
+    field_names: [String; FN],
     field_index: HashMap<String, usize>,
     final_builder: FB,
     target_phantom: PhantomData<T>,
     fields_phantom: PhantomData<(T0, T1, T2)>,
 }
 
-impl<T, T0, T1, T2, FB> FieldVisitor<T, T0, T1, T2, FB>
+impl<T, T0, T1, T2, FB> FieldVisitor<T, T0, T1, T2, FB, 3>
 where
     T0: for<'a> Deserialize<'a>,
     T1: for<'a> Deserialize<'a>,
     T2: for<'a> Deserialize<'a>,
     FB: FinalBuilder<T, (T0, T1, T2)>,
 {
-    fn new(final_builder: FB, field_names: Vec<String>) -> Self {
-        assert_eq!(field_names.len(), 3);
+    fn new(final_builder: FB, field_names: [String; 3]) -> Self {
         let field_index = field_names
             .iter()
             .enumerate()
@@ -229,7 +228,7 @@ where
     }
 }
 
-impl<'de, T, T0, T1, T2, FB> Visitor<'de> for FieldVisitor<T, T0, T1, T2, FB>
+impl<'de, T, T0, T1, T2, FB, const FN: usize> Visitor<'de> for FieldVisitor<T, T0, T1, T2, FB, FN>
 where
     T0: for<'a> Deserialize<'a>,
     T1: for<'a> Deserialize<'a>,
@@ -290,7 +289,7 @@ where
     }
 }
 
-impl<T, T0, T1, T2, FB, V> StructDeserializer<T, (T0, T1, T2), FB, V>
+impl<T, T0, T1, T2, FB, V, const FN: usize> StructDeserializer<T, (T0, T1, T2), FB, V, FN>
 where
     T0: for<'a> Deserialize<'a>,
     T1: for<'a> Deserialize<'a>,
