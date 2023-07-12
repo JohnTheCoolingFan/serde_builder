@@ -89,11 +89,11 @@ impl<T> Default for StructDeserializer<T> {
     }
 }
 
-impl<T, FBARGS, V: Validator<T>> StructDeserializer<T, FBARGS, (), V> {
+impl<T, FBARGS, V: Validator<T>, const FN: usize> StructDeserializer<T, FBARGS, (), V, FN> {
     pub fn final_builder<FB: FinalBuilder<T, FBARGS>>(
         self,
         final_builder: FB,
-    ) -> StructDeserializer<T, FBARGS, FB, V> {
+    ) -> StructDeserializer<T, FBARGS, FB, V, FN> {
         let StructDeserializer {
             target_phantom,
             fb_args_phantom: _,
@@ -111,8 +111,13 @@ impl<T, FBARGS, V: Validator<T>> StructDeserializer<T, FBARGS, (), V> {
     }
 }
 
-impl<T, FBARGS, FB: FinalBuilder<T, FBARGS>> StructDeserializer<T, FBARGS, FB, ()> {
-    pub fn validator<V: Validator<T>>(self, validator: V) -> StructDeserializer<T, FBARGS, FB, V> {
+impl<T, FBARGS, FB: FinalBuilder<T, FBARGS>, const FN: usize>
+    StructDeserializer<T, FBARGS, FB, (), FN>
+{
+    pub fn validator<V: Validator<T>>(
+        self,
+        validator: V,
+    ) -> StructDeserializer<T, FBARGS, FB, V, FN> {
         let StructDeserializer {
             target_phantom,
             fb_args_phantom,
