@@ -247,7 +247,10 @@ where
                         }
                         field2 = Some(map.next_value()?);
                     }
-                    _ => {}
+                    // field_index was constructed based on field_names array, so it can't contain
+                    // indexes larger than max index of field_names, and cannot contain keys that
+                    // are not in field_names
+                    _ => unreachable!(),
                 }
             }
         }
