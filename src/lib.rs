@@ -38,6 +38,12 @@ impl<T> Default for StructDeserializer<T> {
     }
 }
 
+impl<T> StructDeserializer<T> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl<T, FBARGS, V: Validator<T>, const FN: usize> StructDeserializer<T, FBARGS, (), V, FN> {
     pub fn final_builder<FB: FinalBuilder<T, FBARGS>>(
         self,
