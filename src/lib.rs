@@ -202,9 +202,7 @@ struct FieldVisitor<T, T0, T1, T2, FB> {
     field_index: HashMap<String, usize>,
     final_builder: FB,
     target_phantom: PhantomData<T>,
-    field0_phantom: PhantomData<T0>,
-    field1_phantom: PhantomData<T1>,
-    field2_phantom: PhantomData<T2>,
+    fields_phantom: PhantomData<(T0, T1, T2)>,
 }
 
 impl<'de, T, T0, T1, T2, FB> Visitor<'de> for FieldVisitor<T, T0, T1, T2, FB>
@@ -291,9 +289,7 @@ where
             field_index: field_names_index,
             final_builder: final_builder.unwrap(),
             target_phantom: PhantomData::default(),
-            field0_phantom: PhantomData::default(),
-            field1_phantom: PhantomData::default(),
-            field2_phantom: PhantomData::default(),
+            fields_phantom: PhantomData::default(),
         };
         // I don't like this AT ALL
         let field_names_static: &'static [&'static str] = &*field_names
