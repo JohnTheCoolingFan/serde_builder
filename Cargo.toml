@@ -2,8 +2,11 @@
 name = "serde_builder"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "serde extension to build de/serialization algorithms for types using a builder pattern"
+license = "MIT"
+repository = "https://github.com/JohnTheCoolingFan/serde_builder"
+documentation = "https://docs.rs/serde_builder"
+authors = ["Jonh The Cooling Fan <ivan8215145640@gmail.com>"]
 
 [features]
 leaking = []
