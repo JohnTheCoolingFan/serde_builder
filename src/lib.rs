@@ -158,12 +158,10 @@ add_field_impl! {
     15 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10, 11 T11, 12 T12, 13 T13, 14 T14), T15
 }
 
-impl<T, T0, T1, T2, FB, V> StructDeserializer<T, (T0, T1, T2), FB, V, 3>
+impl<T, T0, FB, V> StructDeserializer<T, T0, FB, V, 1>
 where
     T0: for<'a> Deserialize<'a>,
-    T1: for<'a> Deserialize<'a>,
-    T2: for<'a> Deserialize<'a>,
-    FB: FinalBuilder<T, (T0, T1, T2)>,
+    FB: FinalBuilder<T, T0>,
     V: Validator<T>,
 {
     pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, D::Error> {
@@ -174,10 +172,8 @@ where
             validator: _,
             field_names,
         } = self;
-        let field_visitor = FieldVisitor::<T, (T0, T1, T2), FB, 3>::new(
-            final_builder.unwrap(),
-            field_names.clone(),
-        );
+        let field_visitor =
+            FieldVisitor::<T, T0, FB, 1>::new(final_builder.unwrap(), field_names.clone());
         // I don't like this AT ALL
         let field_names_static: &'static [&'static str] = &*field_names
             .into_iter()
@@ -186,4 +182,56 @@ where
             .leak();
         des.deserialize_struct("struct", field_names_static, field_visitor)
     }
+}
+
+macro_rules! deserialize_impl {
+    ($($len:expr => $($name:ident),+)+) => {
+        $(
+            impl<T, $($name,)+ FB, V> StructDeserializer<T, ($($name),+), FB, V, $len>
+            where
+                $($name: for<'a> Deserialize<'a>,)+
+                FB: FinalBuilder<T, ($($name),+)>,
+                V: Validator<T>,
+            {
+                pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, D::Error> {
+                    let StructDeserializer {
+                        target_phantom: _,
+                        fb_args_phantom: _,
+                        final_builder,
+                        validator: _,
+                        field_names,
+                    } = self;
+                    let field_visitor = FieldVisitor::<T, ($($name,)+), FB, $len>::new(
+                        final_builder.unwrap(),
+                        field_names.clone(),
+                    );
+                    // I don't like this AT ALL
+                    let field_names_static: &'static [&'static str] = &*field_names
+                        .into_iter()
+                        .map(|s| &*Box::leak(s.into_boxed_str()))
+                        .collect::<Vec<_>>()
+                        .leak();
+                    des.deserialize_struct("struct", field_names_static, field_visitor)
+                }
+            }
+        )+
+    }
+}
+
+deserialize_impl! {
+    2 => T0, T1
+    3 => T0, T1, T2
+    4 => T0, T1, T2, T3
+    5 => T0, T1, T2, T3, T4
+    6 => T0, T1, T2, T3, T4, T5
+    7 => T0, T1, T2, T3, T4, T5, T6
+    8 => T0, T1, T2, T3, T4, T5, T6, T7
+    9 => T0, T1, T2, T3, T4, T5, T6, T7, T8
+    10 => T0, T1, T2, T3, T4, T5, T6, T7, T8, T9
+    11 => T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10
+    12 => T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11
+    13 => T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12
+    14 => T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13
+    15 => T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
+    16 => T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15
 }
