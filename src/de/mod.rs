@@ -169,14 +169,18 @@ where
             validator: _,
             field_names,
         } = self;
+        #[cfg_attr(not(feature = "leaking"), allow(clippy::redundant_clone))]
         let field_visitor =
             FieldVisitor::<T, T0, FB, 1>::new(final_builder.unwrap(), field_names.clone());
         // I don't like this AT ALL
+        #[cfg(feature = "leaking")]
         let field_names_static: &'static [&'static str] = &*field_names
             .into_iter()
             .map(|s| &*Box::leak(s.into_boxed_str()))
             .collect::<Vec<_>>()
             .leak();
+        #[cfg(not(feature = "leaking"))]
+        let field_names_static = &["field 0"];
         des.deserialize_struct("struct", field_names_static, field_visitor)
     }
 }

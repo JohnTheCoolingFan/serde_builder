@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+leaking = []
+
 [dependencies]
 serde = "1.0"
 concat-arrays = "0.1"
