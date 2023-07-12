@@ -7,6 +7,7 @@ license = "MIT"
 repository = "https://github.com/JohnTheCoolingFan/serde_builder"
 documentation = "https://docs.rs/serde_builder"
 authors = ["Jonh The Cooling Fan <ivan8215145640@gmail.com>"]
+categories = ["encoding", "rust-patterns"]
 
 [features]
 leaking = []
