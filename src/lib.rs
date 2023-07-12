@@ -205,6 +205,30 @@ struct FieldVisitor<T, T0, T1, T2, FB> {
     fields_phantom: PhantomData<(T0, T1, T2)>,
 }
 
+impl<T, T0, T1, T2, FB> FieldVisitor<T, T0, T1, T2, FB>
+where
+    T0: for<'a> Deserialize<'a>,
+    T1: for<'a> Deserialize<'a>,
+    T2: for<'a> Deserialize<'a>,
+    FB: FinalBuilder<T, (T0, T1, T2)>,
+{
+    fn new(final_builder: FB, field_names: Vec<String>) -> Self {
+        assert_eq!(field_names.len(), 3);
+        let field_index = field_names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.clone(), i))
+            .collect();
+        Self {
+            field_names,
+            field_index,
+            final_builder,
+            target_phantom: PhantomData::default(),
+            fields_phantom: PhantomData::default(),
+        }
+    }
+}
+
 impl<'de, T, T0, T1, T2, FB> Visitor<'de> for FieldVisitor<T, T0, T1, T2, FB>
 where
     T0: for<'a> Deserialize<'a>,
@@ -282,18 +306,7 @@ where
             validator,
             field_names,
         } = self;
-        let field_names_index: HashMap<String, _> = field_names
-            .iter()
-            .enumerate()
-            .map(|(i, n)| (n.clone(), i))
-            .collect();
-        let field_visitor = FieldVisitor {
-            field_names: field_names.clone(),
-            field_index: field_names_index,
-            final_builder: final_builder.unwrap(),
-            target_phantom: PhantomData::default(),
-            fields_phantom: PhantomData::default(),
-        };
+        let field_visitor = FieldVisitor::new(final_builder.unwrap(), field_names.clone());
         // I don't like this AT ALL
         let field_names_static: &'static [&'static str] = &*field_names
             .into_iter()
