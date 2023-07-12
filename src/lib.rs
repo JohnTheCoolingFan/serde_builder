@@ -197,22 +197,21 @@ add_field_impl! {
     15 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10, 11 T11, 12 T12, 13 T13, 14 T14), T15
 }
 
-struct FieldVisitor<T, T0, T1, T2, FB, const FN: usize> {
+struct FieldVisitor<T, FBARGS, FB, const FN: usize> {
     field_names: [String; FN],
     field_index: HashMap<String, usize>,
     final_builder: FB,
     target_phantom: PhantomData<T>,
-    fields_phantom: PhantomData<(T0, T1, T2)>,
+    fields_phantom: PhantomData<FBARGS>,
 }
 
-impl<T, T0, T1, T2, FB> FieldVisitor<T, T0, T1, T2, FB, 3>
+impl<T, T0, FB> FieldVisitor<T, T0, FB, 1>
 where
     T0: for<'a> Deserialize<'a>,
-    T1: for<'a> Deserialize<'a>,
-    T2: for<'a> Deserialize<'a>,
-    FB: FinalBuilder<T, (T0, T1, T2)>,
+    FB: FinalBuilder<T, T0>,
 {
-    fn new(final_builder: FB, field_names: [String; 3]) -> Self {
+    #[allow(dead_code)]
+    fn new(final_builder: FB, field_names: [String; 1]) -> Self {
         let field_index = field_names
             .iter()
             .enumerate()
@@ -228,12 +227,10 @@ where
     }
 }
 
-impl<'de, T, T0, T1, T2, FB, const FN: usize> Visitor<'de> for FieldVisitor<T, T0, T1, T2, FB, FN>
+impl<'de, T, T0, FB> Visitor<'de> for FieldVisitor<T, T0, FB, 1>
 where
     T0: for<'a> Deserialize<'a>,
-    T1: for<'a> Deserialize<'a>,
-    T2: for<'a> Deserialize<'a>,
-    FB: FinalBuilder<T, (T0, T1, T2)>,
+    FB: FinalBuilder<T, T0>,
 {
     type Value = T;
 
@@ -246,8 +243,6 @@ where
         A: serde::de::MapAccess<'de>,
     {
         let mut field0: Option<T0> = None;
-        let mut field1: Option<T1> = None;
-        let mut field2: Option<T2> = None;
 
         while let Some(key) = map.next_key()? {
             if self.field_names.contains(&key) {
@@ -258,18 +253,6 @@ where
                         }
                         field0 = Some(map.next_value()?);
                     }
-                    Some(1) => {
-                        if field1.is_some() {
-                            return Err(de::Error::duplicate_field("field1"));
-                        }
-                        field1 = Some(map.next_value()?);
-                    }
-                    Some(2) => {
-                        if field2.is_some() {
-                            return Err(de::Error::duplicate_field("field2"));
-                        }
-                        field2 = Some(map.next_value()?);
-                    }
                     // field_index was constructed based on field_names array, so it can't contain
                     // indexes larger than max index of field_names, and cannot contain keys that
                     // are not in field_names
@@ -279,17 +262,100 @@ where
         }
 
         let field0 = field0.ok_or_else(|| de::Error::missing_field("field0"))?;
-        let field1 = field1.ok_or_else(|| de::Error::missing_field("field1"))?;
-        let field2 = field2.ok_or_else(|| de::Error::missing_field("field2"))?;
 
-        Ok(self
-            .final_builder
-            .assemble((field0, field1, field2))
-            .unwrap())
+        Ok(self.final_builder.assemble(field0).unwrap())
     }
 }
 
-impl<T, T0, T1, T2, FB, V, const FN: usize> StructDeserializer<T, (T0, T1, T2), FB, V, FN>
+macro_rules! field_visitor_impl {
+    ($($len:expr => ($($n:tt $name:ident $fname:ident),+))+) => {
+        $(
+            #[allow(dead_code)]
+            impl<T, $($name,)+ FB> FieldVisitor<T, ($($name),+), FB, $len>
+            where
+                $($name: for<'a> Deserialize<'a>,)+
+                FB: FinalBuilder<T, ($($name,)+)>,
+            {
+                fn new(final_builder: FB, field_names: [String; $len]) -> Self {
+                    let field_index = field_names
+                        .iter()
+                        .enumerate()
+                        .map(|(i, n)| (n.clone(), i))
+                        .collect();
+                    Self {
+                        field_names,
+                        field_index,
+                        final_builder,
+                        target_phantom: PhantomData::default(),
+                        fields_phantom: PhantomData::default(),
+                    }
+                }
+            }
+
+            impl<'de, T, $($name,)+ FB> Visitor<'de> for FieldVisitor<T, ($($name,)+), FB, $len>
+            where
+                $($name: for<'a> Deserialize<'a>,)+
+                FB: FinalBuilder<T, ($($name),+)>,
+            {
+                type Value = T;
+
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("struct")
+                }
+
+                fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+                where
+                    A: serde::de::MapAccess<'de>
+                {
+                    $(let mut $fname: Option<$name> = None;)+
+
+                    while let Some(key) = map.next_key()? {
+                        if self.field_names.contains(&key) {
+                            match self.field_index.get(&key) {
+                                $(
+                                Some($n) => {
+                                    if $fname.is_some() {
+                                        return Err(serde::de::Error::duplicate_field(stringify!($fname)));
+                                    }
+                                    $fname = Some(map.next_value()?);
+                                },
+                                )+
+                                // field_index was constructed based on field_names array, so it can't contain
+                                // indexes larger than max index of field_names, and cannot contain keys that
+                                // are not in field_names
+                                _ => unreachable!(),
+                            }
+                        }
+                    }
+
+                    $(let $fname = $fname.ok_or_else(|| de::Error::missing_field(stringify!($fname)))?;)+
+
+                    Ok(self.final_builder.assemble(($($fname),+)).unwrap())
+                }
+            }
+        )+
+    }
+}
+
+field_visitor_impl! {
+    2 => (0 T0 field0, 1 T1 field1)
+    3 => (0 T0 field0, 1 T1 field1, 2 T2 field2)
+    4 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3)
+    5 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4)
+    6 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5)
+    7 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6)
+    8 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field7)
+    9 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8)
+    10 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8, 9 T9 field9)
+    11 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8, 9 T9 field9, 10 T10 field10)
+    12 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8, 9 T9 field9, 10 T10 field10, 11 T11 field11)
+    13 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8, 9 T9 field9, 10 T10 field10, 11 T11 field11, 12 T12 field12)
+    14 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8, 9 T9 field9, 10 T10 field10, 11 T11 field11, 12 T12 field12, 13 T13 field13)
+    15 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8, 9 T9 field9, 10 T10 field10, 11 T11 field11, 12 T12 field12, 13 T13 field13, 14 T14 field14)
+    16 => (0 T0 field0, 1 T1 field1, 2 T2 field2, 3 T3 field3, 4 T4 field4, 5 T5 field5, 6 T6 field6, 7 T7 field, 8 T8 field8, 9 T9 field9, 10 T10 field10, 11 T11 field11, 12 T12 field12, 13 T13 field13, 14 T14 field14, 15 T15 field15)
+}
+
+impl<T, T0, T1, T2, FB, V> StructDeserializer<T, (T0, T1, T2), FB, V, 3>
 where
     T0: for<'a> Deserialize<'a>,
     T1: for<'a> Deserialize<'a>,
@@ -305,7 +371,10 @@ where
             validator,
             field_names,
         } = self;
-        let field_visitor = FieldVisitor::new(final_builder.unwrap(), field_names.clone());
+        let field_visitor = FieldVisitor::<T, (T0, T1, T2), FB, 3>::new(
+            final_builder.unwrap(),
+            field_names.clone(),
+        );
         // I don't like this AT ALL
         let field_names_static: &'static [&'static str] = &*field_names
             .into_iter()
