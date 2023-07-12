@@ -92,14 +92,8 @@ impl<T, FBARGS, FB: FinalBuilder<T, FBARGS>, const FN: usize>
     }
 }
 
-// Making an impl that would go from one element to two conflicted with otehr manual impl and macro
-// impls. So I think there is no way to have a method for adding just one first field, sadly.
 impl<T, FB: FinalBuilder<T, ()>, V: Validator<T>> StructDeserializer<T, (), FB, V, 0> {
-    pub fn first_fields<T0, T1, N0: ToString, N1: ToString>(
-        self,
-        name0: N0,
-        name1: N1,
-    ) -> StructDeserializer<T, (T0, T1), (), V, 2> {
+    pub fn field<T0, N: ToString>(self, name: N) -> StructDeserializer<T, (T0,), (), V, 1> {
         let StructDeserializer {
             target_phantom,
             fb_args_phantom: _,
@@ -112,7 +106,7 @@ impl<T, FB: FinalBuilder<T, ()>, V: Validator<T>> StructDeserializer<T, (), FB, 
             fb_args_phantom: PhantomData::default(),
             final_builder: None,
             validator,
-            field_names: [name0.to_string(), name1.to_string()],
+            field_names: [name.to_string()],
         }
     }
 }
