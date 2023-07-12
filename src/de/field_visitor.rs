@@ -2,7 +2,7 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use serde::{de::Visitor, Deserialize};
 
-use crate::FinalBuilder;
+use super::FinalBuilder;
 
 pub(crate) struct FieldVisitor<T, FBARGS, FB, const FN: usize> {
     field_names: [String; FN],

@@ -1,4 +1,4 @@
-use serde_builder::StructDeserializer;
+use serde_builder::de::StructDeserializer;
 use serde_json::json;
 
 #[derive(Debug)]
