@@ -368,7 +368,7 @@ where
             target_phantom: _,
             fb_args_phantom: _,
             final_builder,
-            validator,
+            validator: _,
             field_names,
         } = self;
         let field_visitor = FieldVisitor::<T, (T0, T1, T2), FB, 3>::new(
