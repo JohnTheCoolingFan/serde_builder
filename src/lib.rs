@@ -167,6 +167,7 @@ macro_rules! add_field_impl {
                         validator,
                         field_names,
                     } = self;
+                    #[allow(clippy::drop_non_drop)]
                     StructDeserializer {
                         target_phantom,
                         fb_args_phantom: PhantomData::default(),
