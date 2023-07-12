@@ -55,7 +55,12 @@ where
                 match self.field_index.get(&key) {
                     Some(0) => {
                         if field0.is_some() {
+                            #[cfg(not(feature = "leaking"))]
                             return Err(serde::de::Error::duplicate_field("field0"));
+                            #[cfg(feature = "leaking")]
+                            return Err(serde::de::Error::duplicate_field(&*Box::leak(
+                                self.field_names[0].clone().into_boxed_str(),
+                            )));
                         }
                         field0 = Some(map.next_value()?);
                     }
@@ -67,7 +72,14 @@ where
             }
         }
 
+        #[cfg(not(feature = "leaking"))]
         let field0 = field0.ok_or_else(|| serde::de::Error::missing_field("field0"))?;
+        #[cfg(feature = "leaking")]
+        let field0 = field0.ok_or_else(|| {
+            serde::de::Error::missing_field(&*Box::leak(
+                self.field_names[0].clone().into_boxed_str(),
+            ))
+        })?;
 
         Ok(self.final_builder.assemble(field0).unwrap())
     }
@@ -140,7 +152,7 @@ macro_rules! field_visitor_impl {
                         #[cfg(not(feature = "leaking"))]
                         let $fname = $fname.ok_or_else(|| serde::de::Error::missing_field(stringify!($fname)))?;
                         #[cfg(feature = "leaking")]
-                        let $fname = $fname.ok_or_else(|| serde::de::Error::missing_field(&*Box::leak(self.field_names.get(($n as usize)).unwrap().clone().into_boxed_str())))?;
+                        let $fname = $fname.ok_or_else(|| serde::de::Error::missing_field(&*Box::leak(self.field_names[($n as usize)].clone().into_boxed_str())))?;
                     )+
 
                     Ok(self.final_builder.assemble(($($fname),+)).unwrap())
