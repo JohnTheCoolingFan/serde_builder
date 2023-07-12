@@ -17,7 +17,6 @@ where
     T0: for<'a> Deserialize<'a>,
     FB: FinalBuilder<T, T0>,
 {
-    #[allow(dead_code)]
     pub(crate) fn new(final_builder: FB, field_names: [String; 1]) -> Self {
         let field_index = field_names
             .iter()
@@ -77,7 +76,6 @@ where
 macro_rules! field_visitor_impl {
     ($($len:expr => ($($n:tt $name:ident $fname:ident),+))+) => {
         $(
-            #[allow(dead_code)]
             impl<T, $($name,)+ FB> FieldVisitor<T, ($($name),+), FB, $len>
             where
                 $($name: for<'a> Deserialize<'a>,)+
