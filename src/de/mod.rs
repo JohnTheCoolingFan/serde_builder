@@ -155,55 +155,13 @@ add_field_impl! {
     15 => (0 T0, 1 T1, 2 T2, 3 T3, 4 T4, 5 T5, 6 T6, 7 T7, 8 T8, 9 T9, 10 T10, 11 T11, 12 T12, 13 T13, 14 T14), T15
 }
 
-impl<T, T0, FB, V> StructDeserializer<T, T0, FB, V, 1>
-where
-    T0: for<'a> Deserialize<'a>,
-    FB: FinalBuilder<T, T0>,
-    V: Validator<T>,
-{
-    pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, Error<'de, D>> {
-        let StructDeserializer {
-            target_phantom: _,
-            fb_args_phantom: _,
-            final_builder,
-            validator,
-            field_names,
-        } = self;
-        #[cfg_attr(not(feature = "leaking"), allow(clippy::redundant_clone))]
-        let field_visitor =
-            FieldVisitor::<T, T0, FB, 1>::new(final_builder.unwrap(), field_names.clone());
-        // I don't like this AT ALL
-        #[cfg(feature = "leaking")]
-        let field_names_static: &'static [&'static str] = &*field_names
-            .into_iter()
-            .map(|s| &*Box::leak(s.into_boxed_str()))
-            .collect::<Vec<_>>()
-            .leak();
-        #[cfg(not(feature = "leaking"))]
-        let field_names_static = &["field 0"];
-        let value = des
-            .deserialize_struct(
-                std::any::type_name::<T>(),
-                field_names_static,
-                field_visitor,
-            )
-            .map_err(|deerr| Error::Deserialization(deerr))?;
-        if let Some(validator) = validator {
-            validator
-                .validate(&value)
-                .map_err(|vaerr| Error::Validation(vaerr))?;
-        }
-        Ok(value)
-    }
-}
-
 macro_rules! deserialize_impl {
     ($($len:expr => $($name:ident),+)+) => {
         $(
-            impl<T, $($name,)+ FB, V> StructDeserializer<T, ($($name),+), FB, V, $len>
+            impl<T, $($name,)+ FB, V> StructDeserializer<T, ($($name,)+), FB, V, $len>
             where
                 $($name: for<'a> Deserialize<'a>,)+
-                FB: FinalBuilder<T, ($($name),+)>,
+                FB: FinalBuilder<T, ($($name,)+)>,
                 V: Validator<T>,
             {
                 pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, Error<'de, D>> {
@@ -240,6 +198,7 @@ macro_rules! deserialize_impl {
 }
 
 deserialize_impl! {
+    1 => T0
     2 => T0, T1
     3 => T0, T1, T2
     4 => T0, T1, T2, T3
