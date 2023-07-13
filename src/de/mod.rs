@@ -181,7 +181,11 @@ where
             .leak();
         #[cfg(not(feature = "leaking"))]
         let field_names_static = &["field 0"];
-        des.deserialize_struct("struct", field_names_static, field_visitor)
+        des.deserialize_struct(
+            std::any::type_name::<T>(),
+            field_names_static,
+            field_visitor,
+        )
     }
 }
 
@@ -216,7 +220,7 @@ macro_rules! deserialize_impl {
                         .leak();
                     #[cfg(not(feature = "leaking"))]
                     let field_names_static = &[$(stringify!(field $name)),+];
-                    let value = des.deserialize_struct("struct", field_names_static, field_visitor).map_err(|e| Error::Deserialization(e))?;
+                    let value = des.deserialize_struct(std::any::type_name::<T>(), field_names_static, field_visitor).map_err(|e| Error::Deserialization(e))?;
                     if let Some(validator) = validator {
                         validator.validate(&value).map_err(|e| Error::Validation(e))?;
                     }
