@@ -161,12 +161,12 @@ where
     FB: FinalBuilder<T, T0>,
     V: Validator<T>,
 {
-    pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, D::Error> {
+    pub fn deserialize<'de, D: Deserializer<'de>>(self, des: D) -> Result<T, Error<'de, D>> {
         let StructDeserializer {
             target_phantom: _,
             fb_args_phantom: _,
             final_builder,
-            validator: _,
+            validator,
             field_names,
         } = self;
         #[cfg_attr(not(feature = "leaking"), allow(clippy::redundant_clone))]
@@ -181,11 +181,19 @@ where
             .leak();
         #[cfg(not(feature = "leaking"))]
         let field_names_static = &["field 0"];
-        des.deserialize_struct(
-            std::any::type_name::<T>(),
-            field_names_static,
-            field_visitor,
-        )
+        let value = des
+            .deserialize_struct(
+                std::any::type_name::<T>(),
+                field_names_static,
+                field_visitor,
+            )
+            .map_err(|deerr| Error::Deserialization(deerr))?;
+        if let Some(validator) = validator {
+            validator
+                .validate(&value)
+                .map_err(|vaerr| Error::Validation(vaerr))?;
+        }
+        Ok(value)
     }
 }
 
