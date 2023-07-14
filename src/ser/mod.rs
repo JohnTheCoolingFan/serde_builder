@@ -52,7 +52,7 @@ impl<T> StructSerializer<T> {
         Self::default()
     }
 
-    pub fn field<FT, FA: FieldAccessor<T, FT>>(
+    pub fn field<FT, FA: FnOnce(&T) -> &FT>(
         self,
         name: &'static str,
         field_accessor: FA,
@@ -75,7 +75,7 @@ macro_rules! add_field_impl {
             where
                 $($faname: FieldAccessor<T, $fname>,)+
             {
-                pub fn field<$fname2, $faname2: FieldAccessor<T, $fname2>>(self, name: &'static str, field_accessor: $faname2) ->
+                pub fn field<$fname2, $faname2: FnOnce(&T) -> &$fname2>(self, name: &'static str, field_accessor: $faname2) ->
                     StructSerializer<T, ($(Field<T, $fname, $faname>,)+ Field<T, $fname2, $faname2>,), {$len + 1}>
                 {
                     let StructSerializer {
