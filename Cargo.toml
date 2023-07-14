@@ -1,6 +1,6 @@
 [package]
 name = "serde_builder"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "serde extension to build de/serialization algorithms for types using a builder pattern"
 license = "MIT"
