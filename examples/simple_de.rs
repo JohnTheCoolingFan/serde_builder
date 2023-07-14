@@ -2,6 +2,7 @@ use serde_builder::de::StructDeserializer;
 use serde_json::json;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct TestStruct {
     a_number: u32,
     string: String,
