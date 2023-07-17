@@ -1,3 +1,5 @@
+[![crates.io](https://img.shields.io/crates/v/serde_builder?style=flat)](https://crates.io/crates/serde_builder) [![crates.io](https://img.shields.io/crates/d/serde_builder?style=flat)](https://crates.io/crates/serde_builder)
+
 # serde_builder
 An add-on to serde that aims to provide an alternative to derive using a builder pattern instead
 
