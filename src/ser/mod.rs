@@ -27,8 +27,8 @@ impl<T, FT, FA> Field<T, FT, FA> {
         Self {
             name,
             accessor: field_accessor,
-            target_phantom: PhantomData::default(),
-            field_phantom: PhantomData::default(),
+            target_phantom: PhantomData,
+            field_phantom: PhantomData,
         }
     }
 }
@@ -41,7 +41,7 @@ pub struct StructSerializer<T, FIELDS = (), const FN: usize = 0> {
 impl<T> Default for StructSerializer<T> {
     fn default() -> Self {
         Self {
-            target_phantom: PhantomData::default(),
+            target_phantom: PhantomData,
             fields: (),
         }
     }

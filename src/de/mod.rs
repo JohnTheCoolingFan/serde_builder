@@ -31,8 +31,8 @@ pub struct StructDeserializer<
 impl<T> Default for StructDeserializer<T> {
     fn default() -> Self {
         Self {
-            target_phantom: PhantomData::default(),
-            fb_args_phantom: PhantomData::default(),
+            target_phantom: PhantomData,
+            fb_args_phantom: PhantomData,
             final_builder: None,
             validator: None,
             field_names: [],
@@ -60,7 +60,7 @@ impl<T, FBARGS, V: Validator<T>, const FN: usize> StructDeserializer<T, FBARGS, 
         } = self;
         StructDeserializer {
             target_phantom,
-            fb_args_phantom: PhantomData::default(),
+            fb_args_phantom: PhantomData,
             final_builder: Some(final_builder),
             validator,
             field_names,
@@ -103,7 +103,7 @@ impl<T, FB: FinalBuilder<T, ()>, V: Validator<T>> StructDeserializer<T, (), FB, 
         } = self;
         StructDeserializer {
             target_phantom,
-            fb_args_phantom: PhantomData::default(),
+            fb_args_phantom: PhantomData,
             final_builder: None,
             validator,
             field_names: [name.to_string()],

@@ -27,8 +27,8 @@ where
             field_names,
             field_index,
             final_builder,
-            target_phantom: PhantomData::default(),
-            fields_phantom: PhantomData::default(),
+            target_phantom: PhantomData,
+            fields_phantom: PhantomData,
         }
     }
 }
