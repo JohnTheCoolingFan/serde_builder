@@ -181,7 +181,7 @@ macro_rules! deserialize_impl {
                     #[cfg(feature = "leaking")]
                     let field_names_static: &'static [&'static str] = &*field_names
                         .into_iter()
-                        .map(|s| &*Box::leak(s.into_boxed_str()))
+                        .map(|s| &*s.leak::<'static>())
                         .collect::<Vec<_>>()
                         .leak();
                     #[cfg(not(feature = "leaking"))]
